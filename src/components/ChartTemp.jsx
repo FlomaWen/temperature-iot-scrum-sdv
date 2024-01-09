@@ -14,8 +14,7 @@ const LineChartTemp = ({ dataPoints }) => {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    width: "60%", // Largeur du graphique
-    margin: "auto", // Centrer le graphique horizontalement
+    width: "50%", // Largeur du graphique
   };
 
   const data = {
