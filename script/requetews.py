@@ -22,7 +22,7 @@ while True :
         for item in donnee:
             date_str = datetime.strptime(item[8], "%a, %d %b %Y %H:%M:%S %Z").strftime("%Y-%m-%d %H:%M:%S")
                 
-            reqsql = f"INSERT INTO API (ID,NUM_REC,NUM_CAP,ETAT,TEMP,NVL_HUM,NVL_BAT,`SIGNAL`,DATE_HEURE) VALUES ({item[0]},'{item[1]}','{item[2]}',{item[3]},{item[4]},{item[5]},{item[6]},{item[7]},'{date_str}')"
+            reqsql = f"INSERT INTO JOURNAL_API (ID,NUM_REC,NUM_CAP,ETAT,TEMP,NVL_HUM,NVL_BAT,`SIGNAL`,DATE_HEURE) VALUES ({item[0]},'{item[1]}','{item[2]}',{item[3]},{item[4]},{item[5]},{item[6]},{item[7]},'{date_str}')"
             cursor.execute(reqsql)
         
         cnx.commit()
