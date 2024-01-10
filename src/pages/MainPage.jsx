@@ -7,52 +7,44 @@ import { format } from "date-fns";
 import "leaflet/dist/leaflet.css";
 import "leaflet/dist/images/marker-icon.png";
 import "leaflet/dist/images/marker-shadow.png";
-import ShareModal from "../components/ShareModal";
-
-
-
-const fetchData = async (url) => {
-  const response = await fetch(url);
-  const responseData = await response.json();
-  return responseData;
-};
-const updateSensorName = async (newName, numCap) => {
-  try {
-    const response = await fetch(`https://api.playdj.fr/updateSensorName`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        newName,
-        numCap,
-      }),
-    });
-
-    if (response.ok) {
-      console.log("Mise à jour réussie");
-    } else {
-      console.error("Échec de la mise à jour");
-    }
-  } catch (error) {
-    console.error("Erreur lors de la mise à jour :", error);
-  }
-};
 
 const MainPage = () => {
   const [allDonnees, setAllDonnees] = useState([]);
   const [recentDonnees, setRecentDonnees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [historiqueData, setHistoriqueData] = useState({});
+  const [selectedCapteurs, setSelectedCapteurs] = useState([]);
+  const [mapCenter] = useState([45.1909365, 0.7184407]);
+  const [editingSensorName, setEditingSensorName] = useState(null);
+  const [newSensorName, setNewSensorName] = useState("");
+  const [editedSensorId, setEditedSensorId] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
+  const [alertTemp, setAlertTemp] = useState("");
+  const [alertEmail, setAlertEmail] = useState("");
+  const [alerts, setAlerts] = useState([]);
+  const [currentCapteurForAlert, setCurrentCapteurForAlert] = useState(null);
+  const [alertesActives, setAlertesActives] = useState([]);
 
-  const link = 'localhost:3000'
-
-  const openModal = () => {
-    setModalIsOpen(true);
+  const fetchData = async (url) => {
+    const response = await fetch(url);
+    const responseData = await response.json();
+    return responseData;
   };
 
-  const closeModal = () => {
-    setModalIsOpen(false);
+  const updateSensorName = async (newName, numCap) => {
+    try {
+      const response = await fetch(
+        `https://api.playdj.fr/updateSensorName/${numCap}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ newSensorName: newName }),
+        }
+      );
+      if (!response.ok) throw new Error("Échec de la mise à jour");
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour :", error);
+    }
   };
 
   useEffect(() => {
@@ -61,7 +53,6 @@ const MainPage = () => {
       const dataCapteurs = await fetchData(urlData);
 
       const latestData = {};
-
       dataCapteurs.forEach((data) => {
         if (
           !latestData[data.NOM] ||
@@ -71,22 +62,13 @@ const MainPage = () => {
         }
       });
 
-      const latestDataArray = Object.values(latestData);
-
-      setRecentDonnees(latestDataArray);
+      setRecentDonnees(Object.values(latestData));
       setAllDonnees(dataCapteurs);
       setLoading(false);
     };
 
     fetchDonnees();
   }, []);
-
-  const [historiqueData, setHistoriqueData] = useState({});
-  const [selectedCapteurs, setSelectedCapteurs] = useState([]);
-  const [mapCenter] = useState([45.1909365, 0.7184407]);
-  const [editingSensorName, setEditingSensorName] = useState(null);
-  const [newSensorName, setNewSensorName] = useState("");
-  const [editedSensorId, setEditedSensorId] = useState(null); // État pour stocker l'ID du capteur en cours d'édition
 
   const customMarker = new L.Icon({
     iconUrl:
@@ -114,7 +96,6 @@ const MainPage = () => {
     fetchData("https://api.playdj.fr/donnees")
       .then((dataCapteurs) => {
         const latestData = {};
-
         dataCapteurs.forEach((data) => {
           if (
             !latestData[data.NOM] ||
@@ -125,9 +106,7 @@ const MainPage = () => {
           }
         });
 
-        const latestDataArray = Object.values(latestData);
-
-        setRecentDonnees(latestDataArray);
+        setRecentDonnees(Object.values(latestData));
         setAllDonnees(dataCapteurs);
         setLoading(false);
       })
@@ -138,21 +117,74 @@ const MainPage = () => {
   };
 
   const handleEditSensorName = (capteur, id) => {
-    // Prend l'ID du capteur en plus du nom
     setEditingSensorName(capteur);
     setNewSensorName(capteur);
-    setEditedSensorId(id); // Stocke l'ID du capteur en cours d'édition
+    setEditedSensorId(id);
+  };
+  const openAlertForm = (capteur) => {
+    setCurrentCapteurForAlert(capteur);
+    setShowPopup(true);
+  };
+  const handleCreateAlert = async () => {
+    try {
+      const response = await fetch("https://api.playdj.fr/createAlert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          numCap: currentCapteurForAlert.NUM_CAP,
+          temp: alertTemp,
+          email: alertEmail,
+        }),
+      });
+      if (response.ok) {
+        setShowPopup(false);
+        // Réinitialiser les champs du formulaire
+        setAlertTemp("");
+        setAlertEmail("");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la création de l'alerte:", error);
+    }
   };
 
-    
+  const fetchAlertesActives = async () => {
+    try {
+      const response = await fetch("https://api.playdj.fr/alertes-actives");
+      const data = await response.json();
+      setAlertesActives(data);
+    } catch (error) {
+      console.error(
+        "Erreur lors de la récupération des alertes actives:",
+        error
+      );
+    }
+  };
 
-  
+  useEffect(() => {
+    fetchAlertesActives();
+  }, []);
 
   return (
-    <div className="container mx-auto p-4">
-      <h2 className="text-2xl font-semibold text-center mb-8">
+    <div className=" mx-auto p-4 bg-white">
+      <h2 className="text-2xl font-semibold text-center mb-8 text-black">
         Tableau de Bord Météo
       </h2>
+      <div className="flex justify-center">
+        <button className="hover:bg-gray-200 p-2" onClick={refreshData}>
+          <svg
+            class="w-5 h-5 mx-1"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {loading ? (
           <p className="col-span-3 text-center">Chargement en cours...</p>
@@ -160,7 +192,7 @@ const MainPage = () => {
           recentDonnees.map((data) => (
             <div
               key={data.NOM}
-              className="bg-white shadow-lg rounded p-4 max-w-md mx-auto"
+              className="bg-white shadow-lg rounded p-4 max-w-md mx-auto text-black"
             >
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold mb-4">
@@ -177,22 +209,29 @@ const MainPage = () => {
                 {editingSensorName === data.NOM ? (
                   <button
                     className="text-blue-500 hover:text-blue-600"
-                    onClick={() => {
-                      updateSensorName(newSensorName, editedSensorId); // Appelle la fonction avec le nouveau nom et l'ID
+                    onClick={async () => {
+                      await updateSensorName(newSensorName, editedSensorId); // Appelle la fonction avec le nouveau nom et l'ID
                       setEditingSensorName(null); // Termine l'édition
                       setEditedSensorId(null); // Remet l'ID à null
+                      refreshData();
                     }}
                   >
                     Enregistrer
                   </button>
                 ) : (
                   <button
-                    className="text-blue-500 hover:text-blue-600"
+                    className="text-blue-500 hover:text-blue-600 ml-5"
                     onClick={() => handleEditSensorName(data.NOM, data.NUM_CAP)} // Passe l'ID du capteur
                   >
                     Modifier le nom
                   </button>
                 )}
+                <button
+                  className="text-blue-500 hover:text-blue-600 ml-5"
+                  onClick={() => openAlertForm(data)}
+                >
+                  Créer alerte
+                </button>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
@@ -213,9 +252,7 @@ const MainPage = () => {
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold mb-2">
-                    {data.NVL_HUM === 255
-                      ? "Pas de données"
-                      : `${data.NVL_HUM}%`}
+                    {data.NVL_HUM === 255 ? "-" : `${data.NVL_HUM}%`}
                   </p>
                   <p className="text-sm text-gray-500">Humidité</p>
                 </div>
@@ -276,25 +313,75 @@ const MainPage = () => {
                   </table>
                 </div>
               )}
+
+              {showPopup && (
+                <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg rounded-lg p-6 max-w-xs">
+                  <input
+                    className="w-full p-2 mb-2 border border-gray-300 rounded"
+                    type="text"
+                    placeholder="Température"
+                    value={alertTemp}
+                    onChange={(e) => setAlertTemp(e.target.value)}
+                  />
+                  <input
+                    className="w-full p-2 mb-4 border border-gray-300 rounded"
+                    type="email"
+                    placeholder="Email"
+                    value={alertEmail}
+                    onChange={(e) => setAlertEmail(e.target.value)}
+                  />
+                  <h3 className="text-lg font-semibold mb-4">
+                    Créer une alerte pour {currentCapteurForAlert?.NOM}
+                  </h3>
+                  <button
+                    className="bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600"
+                    onClick={handleCreateAlert}
+                  >
+                    Créer l'alerte
+                  </button>
+                  <button
+                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                    onClick={() => setShowPopup(false)}
+                  >
+                    Fermer
+                  </button>
+                </div>
+              )}
             </div>
           ))
         )}
       </div>
+      <div className="mt-8 text-center">
+        <h3 className="text-2xl font-semibold text-center mb-4 text-black">
+          Alertes Actives
+        </h3>
+        <ul>
+          {alertesActives.map((alerte) => (
+            <li key={alerte.ID}>
+              <p>
+                <strong className="text-black">Capteur:</strong>{" "}
+                {alerte.NUM_CAP}
+              </p>
+              <p>
+                <strong className="text-black">Température:</strong>{" "}
+                {alerte.TEMP}°C
+              </p>
+              <p>
+                <strong className="text-black">Email:</strong> {alerte.EMAIL}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
       <div className="mt-8">
-        <p className="text-2xl font-semibold text-center">Graphique :</p>
+        <p className="text-2xl font-semibold text-center text-black">
+          Graphique :
+        </p>
         <LineChartHum donnees={allDonnees} />
       </div>
-      <button
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4 mx-auto block"
-        onClick={refreshData}
-      >
-        Actualiser
-      </button>
-      
-      
-      <ShareModal/>
+
       <div className="mt-8">
-        <h3 className="text-2xl font-semibold text-center mb-4">
+        <h3 className="text-2xl font-semibold text-center mb-4 text-black">
           Carte des Capteurs
         </h3>
         <MapContainer center={mapCenter} zoom={8} style={{ height: "400px" }}>
@@ -329,9 +416,5 @@ const MainPage = () => {
     </div>
   );
 };
-;
-
 
 export default MainPage;
-
-
