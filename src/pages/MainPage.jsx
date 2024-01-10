@@ -7,11 +7,13 @@ import { format } from "date-fns";
 import "leaflet/dist/leaflet.css";
 import "leaflet/dist/images/marker-icon.png";
 import "leaflet/dist/images/marker-shadow.png";
+import ShareModal from "../components/ShareModal";
+
+
 
 const fetchData = async (url) => {
   const response = await fetch(url);
   const responseData = await response.json();
-
   return responseData;
 };
 const updateSensorName = async (newName, numCap) => {
@@ -41,6 +43,17 @@ const MainPage = () => {
   const [allDonnees, setAllDonnees] = useState([]);
   const [recentDonnees, setRecentDonnees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+
+  const link = 'localhost:3000'
+
+  const openModal = () => {
+    setModalIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalIsOpen(false);
+  };
 
   useEffect(() => {
     const fetchDonnees = async () => {
@@ -130,6 +143,10 @@ const MainPage = () => {
     setNewSensorName(capteur);
     setEditedSensorId(id); // Stocke l'ID du capteur en cours d'édition
   };
+
+    
+
+  
 
   return (
     <div className="container mx-auto p-4">
@@ -273,6 +290,9 @@ const MainPage = () => {
       >
         Actualiser
       </button>
+      
+      
+      <ShareModal/>
       <div className="mt-8">
         <h3 className="text-2xl font-semibold text-center mb-4">
           Carte des Capteurs
@@ -309,5 +329,9 @@ const MainPage = () => {
     </div>
   );
 };
+;
+
 
 export default MainPage;
+
+
